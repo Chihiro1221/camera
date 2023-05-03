@@ -1,15 +1,28 @@
-import { app, shell, BrowserWindow } from 'electron'
+import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+import { Position } from '../preload'
+import createTray from './tray'
+import createContextMenu from './contextMenu'
 
 function createWindow(): void {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
-    width: 900,
-    height: 670,
+    width: 300,
+    height: 300,
+    minWidth: 200,
+    minHeight: 200,
+    maxWidth: 500,
+    maxHeight: 500,
+    x: 1100,
+    y: 550,
     show: false,
+    alwaysOnTop: true,
+    frame: false,
+    skipTaskbar: false,
     autoHideMenuBar: true,
+    transparent: true,
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -17,8 +30,15 @@ function createWindow(): void {
     }
   })
 
+  mainWindow.setAspectRatio(1 / 1)
+  mainWindow.webContents.openDevTools()
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
+  })
+
+  ipcMain.handle('windowMove', (_event, position: Position) => {
+    const [x, y] = mainWindow.getPosition()
+    mainWindow.setPosition(position.x + x, position.y + y)
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -50,6 +70,8 @@ app.whenReady().then(() => {
   })
 
   createWindow()
+  createTray()
+  createContextMenu()
 
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the
